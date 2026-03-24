@@ -11,9 +11,8 @@ const AttestationBook = () => {
 
 	useEffect(() => {
 		loadRecords();
-		// Загружаем данные для выпадающих списков
+		// Убираем /api, так как сервер их не ждет по этому адресу
 		http.get("/ListStudents").then(res => setStudents(res.data));
-		// Тебе нужно будет создать этот роут на бэкенде, если его нет
 		http.get("/ListSessions").then(res => setSessions(res.data));
 	}, []);
 
@@ -32,11 +31,25 @@ const AttestationBook = () => {
 			await http.post("/AddAttestation", {
 				student_id: selectedStudent,
 				student_group_session_id: selectedSession,
-				grade: grade
+				mark: grade // База ждет 'mark', а значение берем из стейта 'grade'
 			});
-			loadRecords(); // Обновить таблицу после добавления
+
+			setGrade(""); // Очистить инпут
+			loadRecords(); // Обновить таблицу
 		} catch (e) {
-			alert("Ошибка при добавлении оценки");
+			console.error("Ошибка при отправке:", e);
+			alert("Ошибка при добавлении");
+		}
+	};
+	const handleDelete = async (id) => {
+		if (window.confirm("Вы уверены, что хотите удалить эту запись?")) {
+			try {
+				await http.delete(`/DeleteAttestation/${id}`); // Путь должен совпадать с роутом
+				loadRecords(); // Обновляем таблицу
+			} catch (e) {
+				console.error("Ошибка при удалении:", e);
+				alert("Не удалось удалить запись");
+			}
 		}
 	};
 
@@ -69,17 +82,21 @@ const AttestationBook = () => {
 
 					{/* Выбор сессии (Предмет + Группа) */}
 					<select
+						className="form-select"
 						value={selectedSession}
 						onChange={(e) => setSelectedSession(e.target.value)}
 						style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", minWidth: "250px" }}
 					>
 						<option value="">Выберите предмет и группу...</option>
-						{/* Найди этот кусок в своем return и замени путь к названию */}
-						{sessions.map(sess => (
-							<option key={sess.id} value={sess.id}>
-								{sess.teacher_discipline?.discipline?.name} — {sess.student_group?.name}
-							</option>
-						))}
+						{sessions && sessions.length > 0 ? (
+							sessions.map(sess => (
+								<option key={sess.id} value={sess.id}>
+									{sess.teacher_discipline?.discipline?.name || "Без названия"} — {sess.student_group?.name || "Без группы"}
+								</option>
+							))
+						) : (
+							<option disabled>Сессии не загружены (база пуста?)</option>
+						)}
 					</select>
 
 					{/* Поле для оценки */}
@@ -115,30 +132,46 @@ const AttestationBook = () => {
 						<th style={{ padding: "12px", border: "1px solid #444" }}>Студент</th>
 						<th style={{ padding: "12px", border: "1px solid #444" }}>Дисциплина</th>
 						<th style={{ padding: "12px", border: "1px solid #444" }}>Оценка</th>
+						<th style={{ padding: "12px", border: "1px solid #444" }}>Действия</th>
 					</tr>
 				</thead>
 				<tbody>
 					{records.length > 0 ? (
 						records.map((r, index) => (
-							<tr key={r.id} style={{
-								backgroundColor: index % 2 === 0 ? "#fff" : "#f9f9f9",
-								borderBottom: "1px solid #eee"
-							}}>
+							<tr key={r.id}>
 								<td style={{ padding: "12px" }}>
-									{r.student ? r.student.name : "Неизвестно"}
+									{r.student?.name || "Неизвестно"}
 								</td>
 								<td style={{ padding: "12px" }}>
-									{/* Используем опциональную цепочку для глубокой вложенности */}
-									{r.student_group_session?.discipline?.name || "—"}
+									{r.student_group_session?.teacher_discipline?.discipline?.name || "—"}
 								</td>
-								<td style={{ padding: "12px", fontWeight: "bold", color: r.grade < 3 ? "red" : "black" }}>
-									{r.grade}
+								<td style={{ padding: "12px", fontWeight: "bold" }}>
+									{r.mark || "—"}
 								</td>
+
+								{/* --- ВОТ ЭТОТ КУСОЧЕК ВСТАВЛЯЕМ СЮДА --- */}
+								<td style={{ padding: "12px", textAlign: "center" }}>
+									<button
+										onClick={() => handleDelete(r.id)}
+										style={{
+											backgroundColor: "#dc3545",
+											color: "white",
+											border: "none",
+											padding: "6px 12px",
+											borderRadius: "4px",
+											cursor: "pointer",
+											fontSize: "12px"
+										}}
+									>
+										Удалить
+									</button>
+								</td>
+								{/* --------------------------------------- */}
 							</tr>
 						))
 					) : (
 						<tr>
-							<td colSpan="3" style={{ padding: "20px", textAlign: "center", color: "#999" }}>
+							<td colSpan="4" style={{ padding: "20px", textAlign: "center", color: "#999" }}>
 								Записей в аттестационной книжке пока нет.
 							</td>
 						</tr>

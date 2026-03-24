@@ -5,12 +5,12 @@ exports.findAll = (req, res) => {
 		include: [
 			{
 				model: db.student_group,
-				as: 'student_group', // Попробуй добавить этот алиас
+				as: 'student_group', // Должно совпадать с init-models
 				attributes: ['name']
 			},
 			{
 				model: db.teacher_discipline,
-				as: 'teacher_discipline', // И этот
+				as: 'teacher_discipline',
 				include: [
 					{
 						model: db.discipline,
@@ -21,10 +21,11 @@ exports.findAll = (req, res) => {
 			}
 		]
 	})
-		.then(data => res.send(data))
+		.then(data => {
+			console.log("Данные из базы:", data); // Посмотри в ТЕРМИНАЛ сервера
+			res.send(data);
+		})
 		.catch(err => {
-			// Выведем полную ошибку в консоль, чтобы увидеть SQL запрос
-			console.log("ПОЛНАЯ ОШИБКА:", err);
 			res.status(500).send({ message: err.message });
 		});
 };

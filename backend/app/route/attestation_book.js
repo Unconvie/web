@@ -8,4 +8,5 @@ module.exports = function (app) {
 	app.get('/api/ListAttestation', [authJwt.verifyToken], attestation.findAll);
 	app.get('/api/ListSessions', [authJwt.verifyToken], session.findAll);
 	app.post('/api/AddAttestation', [authJwt.verifyToken], attestation.add);
+	app.delete('/api/DeleteAttestation/:id', attestation.delete);	// Обрати внимание на :id — это переменная, которую мы вытащим в контроллере
 };
