@@ -1,11 +1,14 @@
 import axios from "axios";
 
+const user = JSON.parse(localStorage.getItem('user')); // Проверь, как ты хранишь юзера
+
 const apiClient = axios.create({
-	baseURL: "http://localhost:3000/api",
+	baseURL: "http://localhost:3000/api", // Проверь, что порт 3000 (бэкенд)
 	headers: {
-		"Content-Type": "application/json"
+		"Content-type": "application/json"
 	}
 });
+
 
 // Добавляем перехватчик: перед каждым запросом проверяем наличие токена
 apiClient.interceptors.request.use(

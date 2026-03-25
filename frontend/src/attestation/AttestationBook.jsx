@@ -8,6 +8,9 @@ const AttestationBook = () => {
 	const [selectedStudent, setSelectedStudent] = useState("");
 	const [selectedSession, setSelectedSession] = useState("");
 	const [grade, setGrade] = useState("");
+	const [editingId, setEditingId] = useState(null);
+	const [editMark, setEditMark] = useState("");
+	const [filterDiscipline, setFilterDiscipline] = useState(""); // хранение выбранного фильтра
 
 	useEffect(() => {
 		loadRecords();
@@ -52,6 +55,32 @@ const AttestationBook = () => {
 			}
 		}
 	};
+
+	const handleUpdate = async (id) => {
+		try {
+			await http.put(`/UpdateAttestation/${id}`, { mark: editMark });
+			setEditingId(null); // Выходим из режима редактирования
+			loadRecords();      // Обновляем таблицу
+		} catch (e) {
+			alert("Ошибка при обновлении");
+		}
+	};
+
+	// Получаем уникальный список названий дисциплин из загруженных записей
+	const uniqueDisciplines = [...new Set(records
+		.map(r => r.student_group_session?.teacher_discipline?.discipline?.name)
+		.filter(name => name) // Убираем пустые значения
+	)];
+	// отфильтрованный массив, который и будем выводить в таблице
+	// Сначала фильтруем, а потом сортируем результат по алфавиту
+	const filteredRecords = (filterDiscipline
+		? records.filter(r => r.student_group_session?.teacher_discipline?.discipline?.name === filterDiscipline)
+		: records)
+		.sort((a, b) => {
+			const nameA = a.student?.name?.toLowerCase() || "";
+			const nameB = b.student?.name?.toLowerCase() || "";
+			return nameA.localeCompare(nameB);
+		});
 
 	return (
 		<div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
@@ -100,13 +129,18 @@ const AttestationBook = () => {
 					</select>
 
 					{/* Поле для оценки */}
-					<input
-						type="number"
-						placeholder="Оценка (2-5)"
+					{/* Заменяем input на select для валидации */}
+					<select
 						value={grade}
 						onChange={(e) => setGrade(e.target.value)}
-						style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "120px" }}
-					/>
+						style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", width: "150px" }}
+					>
+						<option value="">Оценка...</option>
+						<option value="5">5 (Отлично)</option>
+						<option value="4">4 (Хорошо)</option>
+						<option value="3">3 (Удовл.)</option>
+						<option value="2">2 (Неуд.)</option>
+					</select>
 
 					<button
 						onClick={handleAdd}
@@ -124,6 +158,27 @@ const AttestationBook = () => {
 					</button>
 				</div>
 			</div>
+			<div style={{ marginBottom: "15px", display: "flex", alignItems: "center", gap: "10px" }}>
+				<label>Фильтр по дисциплине:</label>
+				<select
+					value={filterDiscipline}
+					onChange={(e) => setFilterDiscipline(e.target.value)}
+					style={{ padding: "5px", borderRadius: "4px" }}
+				>
+					<option value="">Все предметы</option>
+					{uniqueDisciplines.map(name => (
+						<option key={name} value={name}>{name}</option>
+					))}
+				</select>
+				{filterDiscipline && (
+					<button
+						onClick={() => setFilterDiscipline("")}
+						style={{ border: "none", background: "none", color: "blue", cursor: "pointer", textDecoration: "underline" }}
+					>
+						Сбросить
+					</button>
+				)}
+			</div>
 
 			{/* Таблица с результатами */}
 			<table style={{ width: "100%", borderCollapse: "collapse", boxShadow: "0 2px 5px rgba(0,0,0,0.1)" }}>
@@ -136,43 +191,58 @@ const AttestationBook = () => {
 					</tr>
 				</thead>
 				<tbody>
-					{records.length > 0 ? (
-						records.map((r, index) => (
+					{filteredRecords.length > 0 ? (
+						filteredRecords.map((r, index) => (
 							<tr key={r.id}>
+								<td style={{ padding: "12px" }}>{r.student?.name}</td>
+								<td style={{ padding: "12px" }}>{r.student_group_session?.teacher_discipline?.discipline?.name}</td>
+
+								{/* Ячейка с оценкой */}
 								<td style={{ padding: "12px" }}>
-									{r.student?.name || "Неизвестно"}
-								</td>
-								<td style={{ padding: "12px" }}>
-									{r.student_group_session?.teacher_discipline?.discipline?.name || "—"}
-								</td>
-								<td style={{ padding: "12px", fontWeight: "bold" }}>
-									{r.mark || "—"}
+									{editingId === r.id ? (
+										/* Комментарии внутри тернарного оператора лучше убрать или писать так */
+										<select
+											value={editMark}
+											onChange={(e) => setEditMark(e.target.value)}
+											style={{ padding: "4px", borderRadius: "4px", border: "1px solid #ccc" }}
+										>
+											<option value="5">5 (Отлично)</option>
+											<option value="4">4 (Хорошо)</option>
+											<option value="3">3 (Удовл.)</option>
+											<option value="2">2 (Неуд.)</option>
+										</select>
+									) : (
+										<strong>{r.mark || "—"}</strong>
+									)}
 								</td>
 
-								{/* --- ВОТ ЭТОТ КУСОЧЕК ВСТАВЛЯЕМ СЮДА --- */}
+								{/* Ячейка с кнопками */}
 								<td style={{ padding: "12px", textAlign: "center" }}>
-									<button
-										onClick={() => handleDelete(r.id)}
-										style={{
-											backgroundColor: "#dc3545",
-											color: "white",
-											border: "none",
-											padding: "6px 12px",
-											borderRadius: "4px",
-											cursor: "pointer",
-											fontSize: "12px"
-										}}
-									>
-										Удалить
-									</button>
+									{editingId === r.id ? (
+										<>
+											<button onClick={() => handleUpdate(r.id)} style={{ marginRight: "5px", color: "green" }}>💾</button>
+											<button onClick={() => setEditingId(null)} style={{ color: "gray" }}>✖</button>
+										</>
+									) : (
+										<>
+											<button
+												onClick={() => { setEditingId(r.id); setEditMark(r.mark); }}
+												style={{ marginRight: "10px", cursor: "pointer" }}
+											>
+												✏️
+											</button>
+											<button onClick={() => handleDelete(r.id)} style={{ color: "red", cursor: "pointer" }}>
+												🗑️
+											</button>
+										</>
+									)}
 								</td>
-								{/* --------------------------------------- */}
 							</tr>
 						))
 					) : (
 						<tr>
-							<td colSpan="4" style={{ padding: "20px", textAlign: "center", color: "#999" }}>
-								Записей в аттестационной книжке пока нет.
+							<td colSpan="4" style={{ padding: "20px", textAlign: "center" }}>
+								{filterDiscipline ? "По выбранной дисциплине записей нет" : "Записей пока нет"}
 							</td>
 						</tr>
 					)}

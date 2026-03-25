@@ -66,3 +66,21 @@ exports.delete = (req, res) => {
 			res.status(500).send({ message: "Ошибка сервера при удалении" });
 		});
 };
+
+// Обновление оценки
+exports.update = (req, res) => {
+	const id = req.params.id;
+	Attestation.update({ mark: req.body.mark }, {
+		where: { id: id }
+	})
+		.then(num => {
+			if (num == 1) {
+				res.send({ message: "Оценка обновлена!" });
+			} else {
+				res.send({ message: "Не удалось обновить. Возможно, запись не найдена." });
+			}
+		})
+		.catch(err => {
+			res.status(500).send({ message: "Ошибка сервера при обновлении" });
+		});
+};
