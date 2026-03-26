@@ -10,6 +10,7 @@ const AttestationBook = () => {
 	const [grade, setGrade] = useState("");
 	const [editingId, setEditingId] = useState(null);
 	const [editMark, setEditMark] = useState("");
+	const [editSessionId, setEditSessionId] = useState(""); // для хранения ID сессии при редактировании
 	const [filterDiscipline, setFilterDiscipline] = useState(""); // хранение выбранного фильтра
 
 	useEffect(() => {
@@ -58,13 +59,28 @@ const AttestationBook = () => {
 
 	const handleUpdate = async (id) => {
 		try {
-			await http.put(`/UpdateAttestation/${id}`, { mark: editMark });
-			setEditingId(null); // Выходим из режима редактирования
-			loadRecords();      // Обновляем таблицу
+			if (!editSessionId) {
+				alert("Выберите дисциплину");
+				return;
+			}
+
+			const dataToUpdate = {
+				mark: editMark,
+				student_group_session_id: parseInt(editSessionId) // Преобразуем в число явно
+			};
+
+			console.log("Отправляем на сервер:", dataToUpdate);
+
+			await http.put(`/UpdateAttestation/${id}`, dataToUpdate);
+
+			setEditingId(null);
+			loadRecords();
 		} catch (e) {
-			alert("Ошибка при обновлении");
+			console.error("Детали ошибки:", e.response?.data || e.message);
+			alert("Ошибка при сохранении");
 		}
 	};
+
 
 	// Получаем уникальный список названий дисциплин из загруженных записей
 	const uniqueDisciplines = [...new Set(records
@@ -81,6 +97,9 @@ const AttestationBook = () => {
 			const nameB = b.student?.name?.toLowerCase() || "";
 			return nameA.localeCompare(nameB);
 		});
+	console.log("Выбранный студент:", selectedStudent);
+	console.log("Данные студента:", students.find(st => st.id == selectedStudent));
+	console.log("Доступные сессии:", sessions);
 
 	return (
 		<div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
@@ -111,21 +130,27 @@ const AttestationBook = () => {
 
 					{/* Выбор сессии (Предмет + Группа) */}
 					<select
-						className="form-select"
 						value={selectedSession}
 						onChange={(e) => setSelectedSession(e.target.value)}
-						style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc", minWidth: "250px" }}
+						style={{ padding: "8px", flex: 2, borderRadius: "4px", border: "1px solid #ccc" }}
+						disabled={!selectedStudent}
 					>
-						<option value="">Выберите предмет и группу...</option>
-						{sessions && sessions.length > 0 ? (
-							sessions.map(sess => (
-								<option key={sess.id} value={sess.id}>
-									{sess.teacher_discipline?.discipline?.name || "Без названия"} — {sess.student_group?.name || "Без группы"}
+						<option value="">
+							{selectedStudent ? "Выберите предмет..." : "Сначала выберите студента"}
+						</option>
+						{sessions
+							.filter(s => {
+								const student = students.find(st => st.id == selectedStudent);
+								if (!student) return false;
+								// У студента group_id, а у сессии student_group_id
+								return String(s.student_group_id) === String(student.group_id);
+							})
+							.map(s => (
+								<option key={s.id} value={s.id}>
+									{s.teacher_discipline?.discipline?.name} ({s.report_type?.name})
 								</option>
 							))
-						) : (
-							<option disabled>Сессии не загружены (база пуста?)</option>
-						)}
+						}
 					</select>
 
 					{/* Поле для оценки */}
@@ -187,6 +212,7 @@ const AttestationBook = () => {
 						<th style={{ padding: "12px", border: "1px solid #444" }}>Студент</th>
 						<th style={{ padding: "12px", border: "1px solid #444" }}>Дисциплина</th>
 						<th style={{ padding: "12px", border: "1px solid #444" }}>Оценка</th>
+						<th style={{ padding: "12px", border: "1px solid #444" }}>Контроль</th>
 						<th style={{ padding: "12px", border: "1px solid #444" }}>Действия</th>
 					</tr>
 				</thead>
@@ -195,7 +221,38 @@ const AttestationBook = () => {
 						filteredRecords.map((r, index) => (
 							<tr key={r.id}>
 								<td style={{ padding: "12px" }}>{r.student?.name}</td>
-								<td style={{ padding: "12px" }}>{r.student_group_session?.teacher_discipline?.discipline?.name}</td>
+								<td style={{ padding: "12px", border: "1px solid #ddd" }}>
+									{editingId === r.id ? (
+										<select
+											// Используем название дисциплины текущей выбранной сессии как значение
+											value={sessions.find(s => s.id == editSessionId)?.teacher_discipline?.discipline?.name || ""}
+											onChange={(e) => {
+												const selectedDiscName = e.target.value;
+												const studentGroupId = r.student_group_session?.student_group_id;
+
+												// Ищем ПЕРВУЮ попавшуюся сессию для этой дисциплины и ЭТОЙ группы
+												const newSession = sessions.find(s =>
+													s.teacher_discipline?.discipline?.name === selectedDiscName &&
+													String(s.student_group_id) === String(studentGroupId)
+												);
+
+												if (newSession) {
+													setEditSessionId(newSession.id);
+												}
+											}}
+										>
+											<option value="">Выберите дисциплину...</option>
+											{[...new Set(sessions
+												.filter(s => String(s.student_group_id) === String(r.student_group_session?.student_group_id))
+												.map(s => s.teacher_discipline?.discipline?.name)
+											)].map(name => (
+												<option key={name} value={name}>{name}</option>
+											))}
+										</select>
+									) : (
+										r.student_group_session?.teacher_discipline?.discipline?.name || "—"
+									)}
+								</td>
 
 								{/* Ячейка с оценкой */}
 								<td style={{ padding: "12px" }}>
@@ -215,7 +272,33 @@ const AttestationBook = () => {
 										<strong>{r.mark || "—"}</strong>
 									)}
 								</td>
+								<td style={{ padding: "12px", border: "1px solid #ddd" }}>
+									{editingId === r.id ? (
+										<select
+											value={editSessionId} // Здесь должен быть ID текущей сессии
+											onChange={(e) => setEditSessionId(e.target.value)} // МЕНЯЕМ ID СЕССИИ ТУТ
+											style={{ width: "100%" }}
+										>
+											{sessions
+												.filter(s => {
+													// Находим дисциплину, которая сейчас выбрана в первом селекте
+													const currentSess = sessions.find(sess => String(sess.id) === String(editSessionId));
+													const currentDiscName = currentSess?.teacher_discipline?.discipline?.name;
+													const studentGroupId = r.student_group_session?.student_group_id;
 
+													return s.teacher_discipline?.discipline?.name === currentDiscName &&
+														String(s.student_group_id) === String(studentGroupId);
+												})
+												.map(s => (
+													<option key={s.id} value={s.id}>
+														{s.report_type?.name}
+													</option>
+												))}
+										</select>
+									) : (
+										r.student_group_session?.report_type?.name || "—"
+									)}
+								</td>
 								{/* Ячейка с кнопками */}
 								<td style={{ padding: "12px", textAlign: "center" }}>
 									{editingId === r.id ? (
@@ -226,8 +309,12 @@ const AttestationBook = () => {
 									) : (
 										<>
 											<button
-												onClick={() => { setEditingId(r.id); setEditMark(r.mark); }}
-												style={{ marginRight: "10px", cursor: "pointer" }}
+												onClick={() => {
+													setEditingId(r.id);
+													setEditMark(r.mark);
+													setEditSessionId(r.student_group_session_id); // чтобы селект сразу открылся на нужном предмете
+												}}
+												style={{ marginRight: "10px", cursor: "pointer", border: "none", background: "none" }}
 											>
 												✏️
 											</button>

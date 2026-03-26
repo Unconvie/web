@@ -73,7 +73,8 @@ function initModels(database) {
 	});
 
 	studentGroupSessionModel.belongsTo(reportTypeModel, {
-		foreignKey: "report_type_id"
+		foreignKey: "report_type_id",
+		as: 'report_type'
 	});
 
 	attestationBookModel.belongsTo(studentModel, {

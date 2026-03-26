@@ -10,6 +10,7 @@ const ListStudents = () => {
 	const [editingStudent, setEditingStudent] = useState(null); // ID студента, которого редактируем
 	const [editName, setEditName] = useState("");
 	const [editGroupId, setEditGroupId] = useState("");
+	const [selectedGroupFilter, setSelectedGroupFilter] = useState("");
 
 	useEffect(() => {
 		loadData();
@@ -52,6 +53,14 @@ const ListStudents = () => {
 			setError("Не удалось загрузить данные"); // <-- УСТАНАВЛИВАЕМ ТЕКСТ
 		}
 	};
+	const filteredAndSortedStudents = students
+		.filter(s => {
+			// Если фильтр не выбран, показываем всех. 
+			// Приводим к строке, так как id из селекта может быть строкой, а в объекте числом.
+			return !selectedGroupFilter ? true : String(s.group_id) === String(selectedGroupFilter);
+		})
+		.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
 	const handleAdd = async (e) => {
 		e.preventDefault();
 		try {
@@ -109,6 +118,37 @@ const ListStudents = () => {
 				</form>
 			</div>
 
+			<div style={{ marginBottom: "15px", display: "flex", alignItems: "center", gap: "10px" }}>
+				<label style={{ fontWeight: "bold" }}>Показать группу:</label>
+				<select
+					value={selectedGroupFilter}
+					onChange={(e) => setSelectedGroupFilter(e.target.value)}
+					style={{ padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
+				>
+					<option value="">Все группы</option>
+					{groups.map(g => (
+						<option key={g.id} value={g.id}>{g.name}</option>
+					))}
+				</select>
+
+				{/* Кнопка сброса: появляется только если selectedGroupFilter не пустой */}
+				{selectedGroupFilter && (
+					<button
+						onClick={() => setSelectedGroupFilter("")}
+						style={{
+							border: "none",
+							background: "none",
+							color: "#007bff",
+							cursor: "pointer",
+							textDecoration: "underline",
+							fontSize: "14px"
+						}}
+					>
+						Сбросить
+					</button>
+				)}
+			</div>
+
 			<table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
 				<thead>
 					<tr style={{ backgroundColor: "#333", color: "white", textAlign: "left" }}>
@@ -120,7 +160,7 @@ const ListStudents = () => {
 				</thead>
 				<tbody style={{ verticalAlign: "middle" }}>
 					{students.length > 0 ? (
-						students.map((s, index) => (
+						filteredAndSortedStudents.map((s, index) => (
 							<tr key={s.id} style={{ borderBottom: "1px solid #ddd", backgroundColor: index % 2 === 0 ? "#fff" : "#fcfcfc" }}>
 								<td style={{ padding: "12px", color: "#666" }}>{s.id}</td> {/* id */}
 								<td style={{ padding: "12px" }}>{/* name */}

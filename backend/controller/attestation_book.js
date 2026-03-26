@@ -15,6 +15,7 @@ exports.findAll = (req, res) => {
 				model: db.student_group_session,
 				as: 'student_group_session',
 				include: [
+					{ model: db.report_type, as: 'report_type' },
 					{
 						model: db.teacher_discipline,
 						as: 'teacher_discipline',
@@ -31,7 +32,10 @@ exports.findAll = (req, res) => {
 		]
 	})
 		.then(data => res.send(data))
-		.catch(err => res.status(500).send({ message: err.message }));
+		.catch(err => {
+			console.error("ПОДРОБНАЯ ОШИБКА В КОНСОЛИ:", err);
+			res.status(500).send({ message: err.message });
+		});
 };
 
 exports.add = (req, res) => {
@@ -67,20 +71,27 @@ exports.delete = (req, res) => {
 		});
 };
 
-// Обновление оценки
+// Обновление записи (оценка + дисциплина/сессия)
 exports.update = (req, res) => {
 	const id = req.params.id;
-	Attestation.update({ mark: req.body.mark }, {
+
+	// Добавляем второе поле в объект обновления
+	Attestation.update({
+		mark: req.body.mark,
+		student_group_session_id: req.body.student_group_session_id
+	}, {
 		where: { id: id }
 	})
 		.then(num => {
+			// Sequelize возвращает массив, где num[0] - количество обновленных строк
 			if (num == 1) {
-				res.send({ message: "Оценка обновлена!" });
+				res.send({ message: "Запись успешно обновлена!" });
 			} else {
-				res.send({ message: "Не удалось обновить. Возможно, запись не найдена." });
+				res.send({ message: "Не удалось обновить. Возможно, запись не найдена или данные идентичны." });
 			}
 		})
 		.catch(err => {
+			console.error(err); // Всегда полезно видеть ошибку в консоли сервера
 			res.status(500).send({ message: "Ошибка сервера при обновлении" });
 		});
 };

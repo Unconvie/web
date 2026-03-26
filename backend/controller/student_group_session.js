@@ -4,6 +4,10 @@ exports.findAll = (req, res) => {
 	db.student_group_session.findAll({
 		include: [
 			{
+				model: db.report_type,
+				as: 'report_type'
+			},
+			{
 				model: db.student_group,
 				as: 'student_group', // Должно совпадать с init-models
 				attributes: ['name']
