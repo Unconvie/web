@@ -162,41 +162,81 @@ const ListStudents = () => {
 					{students.length > 0 ? (
 						filteredAndSortedStudents.map((s, index) => (
 							<tr key={s.id} style={{ borderBottom: "1px solid #ddd", backgroundColor: index % 2 === 0 ? "#fff" : "#fcfcfc" }}>
-								<td style={{ padding: "12px", color: "#666" }}>{s.id}</td> {/* id */}
-								<td style={{ padding: "12px" }}>{/* name */}
+								<td style={{ padding: "12px", color: "#666" }}>{s.id}</td>
+
+								{/* ФИО студента */}
+								<td style={{ padding: "12px" }}>
 									{editingStudent === s.id ? (
-										<input value={editName} onChange={(e) => setEditName(e.target.value)} />
+										<input
+											value={editName}
+											onChange={(e) => setEditName(e.target.value)}
+											style={{ width: "90%", padding: "4px" }}
+										/>
 									) : (
 										s.name
 									)}
 								</td>
-								<td style={{ padding: "12px" }}> {/* group */}
+
+								{/* Группа */}
+								<td style={{ padding: "12px" }}>
 									{editingStudent === s.id ? (
-										<select value={editGroupId} onChange={(e) => setEditGroupId(e.target.value)}>
+										<select
+											value={editGroupId}
+											onChange={(e) => setEditGroupId(e.target.value)}
+											style={{ padding: "4px" }}
+										>
 											{groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
 										</select>
 									) : (
 										s.student_group ? s.student_group.name : "Не назначена"
 									)}
 								</td>
-								<td style={{ padding: "12px", textAlign: "center", display: "flex", gap: "5px", justifyContent: "center" }}>
-									{editingStudent === s.id ? (
-										<>
-											<button onClick={() => handleUpdate(s.id)} style={{ backgroundColor: "#28a745", color: "white", border: "none", padding: "5px 10px", borderRadius: "4px" }}>ОК</button>
-											<button onClick={cancelEdit} style={{ backgroundColor: "#6c757d", color: "white", border: "none", padding: "5px 10px", borderRadius: "4px" }}>Отмена</button>
-										</>
-									) : (
-										<>
-											<button onClick={() => startEdit(s)} style={{ backgroundColor: "#ffc107", border: "none", padding: "5px 10px", borderRadius: "4px", cursor: "pointer" }}>Изменить</button>
-											<button onClick={() => handleDelete(s.id)} style={{ backgroundColor: "#ff4d4d", color: "white", border: "none", padding: "5px 10px", borderRadius: "4px", cursor: "pointer" }}>Удалить</button>
-										</>
-									)}
+
+								{/* ДЕЙСТВИЯ (сделали как у преподавателей) */}
+								<td style={{ padding: "12px", textAlign: "center" }}>
+									<div style={{ display: "flex", gap: "5px", justifyContent: "center" }}>
+										{editingStudent === s.id ? (
+											<>
+												<button
+													onClick={() => handleUpdate(s.id)}
+													style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem" }}
+													title="Сохранить"
+												>
+													💾
+												</button>
+												<button
+													onClick={cancelEdit}
+													style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem" }}
+													title="Отмена"
+												>
+													✖
+												</button>
+											</>
+										) : (
+											<>
+												<button
+													onClick={() => startEdit(s)}
+													style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem" }}
+													title="Изменить"
+												>
+													✏️
+												</button>
+												<button
+													onClick={() => handleDelete(s.id)}
+													style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.2rem" }}
+													title="Удалить"
+												>
+													🗑️
+												</button>
+											</>
+										)}
+									</div>
 								</td>
 							</tr>
 						))
 					) : (
 						<tr>
-							<td colSpan="3" style={{ padding: "20px", textAlign: "center", color: "#999" }}>
+							<td colSpan="4" style={{ padding: "20px", textAlign: "center", color: "#999" }}>
 								Студентов пока нет.
 							</td>
 						</tr>

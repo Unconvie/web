@@ -101,6 +101,20 @@ function initModels(database) {
 	studentGroupSessionModel.belongsTo(teacherDisciplineModel, {
 		foreignKey: "teacher_discipline_id"
 	});
+	// В initModels после существующих связей:
+	teacherModel.belongsToMany(disciplineModel, {
+		through: teacherDisciplineModel,
+		foreignKey: "teacher_id",
+		otherKey: "discipline_id",
+		as: "disciplines" // Теперь у каждого учителя будет массив disciplines
+	});
+
+	disciplineModel.belongsToMany(teacherModel, {
+		through: teacherDisciplineModel,
+		foreignKey: "discipline_id",
+		otherKey: "teacher_id",
+		as: "teachers"
+	});
 
 	// Возвращаем объект с моделями
 	return {
