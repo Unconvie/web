@@ -8,6 +8,7 @@ import AddDiscipline from './discipline/AddDiscipline.jsx';
 import DisciplineData from './discipline/DisciplineData.jsx';
 import AttestationBook from "./attestation/AttestationBook";
 import TeacherList from "./teacher/TeacherList.jsx";
+import Assignments from "./assignment/Assignments";
 
 import Login from './auth/Login.jsx';
 import Register from './auth/Register.jsx';
@@ -46,11 +47,9 @@ function App() {
 					<Link to="/listDisciplines" style={navLinkStyle}>Дисциплины</Link>
 					<Link to="/teachers" style={navLinkStyle}>Преподаватели</Link>
 					<Link to="/listStudents" style={navLinkStyle}>Студенты</Link>
+					<Link to="/assignments" style={navLinkStyle}>Назначения</Link>
 					<Link to="/attestation" style={navLinkStyle}>Аттестационная книжка</Link>
-					{/* Можно добавить Группы позже */}
 				</div>
-
-				{/* Тут обычно кнопка Выход справа */}
 			</nav>
 
 			<div style={{ padding: "20px" }}>
@@ -101,6 +100,7 @@ function App() {
 
 
 					<Route path="/" element={<Navigate to="/listDisciplines" />} />
+					<Route path="/assignments" element={<Assignments />} />
 					<Route path="/attestation" element={<AttestationBook />} />
 				</Routes>
 			</div>

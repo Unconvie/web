@@ -28,6 +28,7 @@ function initModels(database) {
 	// Определение связей между моделями
 	// Связи "hasMany"
 	disciplineModel.hasMany(teacherDisciplineModel, {
+		as: "teacher_disciplines",
 		foreignKey: "discipline_id",
 		onDelete: "CASCADE"
 	});
@@ -58,17 +59,20 @@ function initModels(database) {
 	});
 
 	teacherModel.hasMany(teacherDisciplineModel, {
+		as: "teacher_disciplines",
 		foreignKey: "teacher_id",
 		onDelete: "CASCADE"
 	});
 
 	teacherDisciplineModel.hasMany(studentGroupSessionModel, {
+		as: "student_group_sessions",
 		foreignKey: "teacher_discipline_id",
 		onDelete: "CASCADE"
 	});
 
 	// Связи "belongsTo"
 	teacherDisciplineModel.belongsTo(disciplineModel, {
+		as: "discipline",
 		foreignKey: "discipline_id"
 	});
 
@@ -95,10 +99,12 @@ function initModels(database) {
 	});
 
 	teacherDisciplineModel.belongsTo(teacherModel, {
+		as: "teacher",
 		foreignKey: "teacher_id"
 	});
 
 	studentGroupSessionModel.belongsTo(teacherDisciplineModel, {
+		as: "teacher_discipline",
 		foreignKey: "teacher_discipline_id"
 	});
 	// В initModels после существующих связей:

@@ -224,13 +224,11 @@ const AttestationBook = () => {
 								<td style={{ padding: "12px", border: "1px solid #ddd" }}>
 									{editingId === r.id ? (
 										<select
-											// Используем название дисциплины текущей выбранной сессии как значение
 											value={sessions.find(s => s.id == editSessionId)?.teacher_discipline?.discipline?.name || ""}
 											onChange={(e) => {
 												const selectedDiscName = e.target.value;
 												const studentGroupId = r.student_group_session?.student_group_id;
 
-												// Ищем ПЕРВУЮ попавшуюся сессию для этой дисциплины и ЭТОЙ группы
 												const newSession = sessions.find(s =>
 													s.teacher_discipline?.discipline?.name === selectedDiscName &&
 													String(s.student_group_id) === String(studentGroupId)
@@ -245,12 +243,30 @@ const AttestationBook = () => {
 											{[...new Set(sessions
 												.filter(s => String(s.student_group_id) === String(r.student_group_session?.student_group_id))
 												.map(s => s.teacher_discipline?.discipline?.name)
-											)].map(name => (
-												<option key={name} value={name}>{name}</option>
-											))}
+											)].map(name => {
+												const sess = sessions.find(s =>
+													s.teacher_discipline?.discipline?.name === name &&
+													String(s.student_group_id) === String(r.student_group_session?.student_group_id)
+												);
+												const tName = sess?.teacher_discipline?.teacher?.name;
+												return (
+													<option key={name} value={name}>
+														{name} {tName ? `— ${tName}` : ""}
+													</option>
+												);
+											})}
 										</select>
 									) : (
-										r.student_group_session?.teacher_discipline?.discipline?.name || "—"
+										/* --- ВОТ ТУТ МЫ ПОПРАВИЛИ ВЫВОД --- */
+										<div>
+											<div style={{ fontWeight: "500" }}>
+												{r.student_group_session?.teacher_discipline?.discipline?.name || "—"}
+											</div>
+											<div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>
+												{/* Обращаемся к teacher напрямую, как в логах терминала */}
+												{r.student_group_session?.teacher_discipline?.teacher?.name || "Преподаватель не указан"}
+											</div>
+										</div>
 									)}
 								</td>
 
@@ -281,19 +297,22 @@ const AttestationBook = () => {
 										>
 											{sessions
 												.filter(s => {
-													// Находим дисциплину, которая сейчас выбрана в первом селекте
+													// Находим дисциплину, которая сейчас выбрана в первом селекте (по названию)
 													const currentSess = sessions.find(sess => String(sess.id) === String(editSessionId));
 													const currentDiscName = currentSess?.teacher_discipline?.discipline?.name;
 													const studentGroupId = r.student_group_session?.student_group_id;
 
+													// Оставляем только те сессии, где совпадает название дисциплины и группа студента
 													return s.teacher_discipline?.discipline?.name === currentDiscName &&
 														String(s.student_group_id) === String(studentGroupId);
 												})
 												.map(s => (
 													<option key={s.id} value={s.id}>
-														{s.report_type?.name}
+														{/* Теперь здесь будет: "Экзамен — Валерий Владимирович" */}
+														{s.report_type?.name} — {s.teacher_discipline?.teacher?.name || "Преподаватель не указан"}
 													</option>
-												))}
+												))
+											}
 										</select>
 									) : (
 										r.student_group_session?.report_type?.name || "—"

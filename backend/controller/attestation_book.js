@@ -3,38 +3,38 @@ const Attestation = db.attestation_book;
 
 exports.findAll = (req, res) => {
 	db.attestation_book.findAll({
-		// Явно просим вернуть mark и id
 		attributes: ['id', 'mark', 'student_id', 'student_group_session_id'],
 		include: [
-			{
-				model: db.student,
-				as: 'student',
-				attributes: ['name']
-			},
+			{ model: db.student, attributes: ['name'] },
 			{
 				model: db.student_group_session,
-				as: 'student_group_session',
 				include: [
 					{ model: db.report_type, as: 'report_type' },
 					{
 						model: db.teacher_discipline,
 						as: 'teacher_discipline',
 						include: [
-							{
-								model: db.discipline,
-								as: 'discipline',
-								attributes: ['name']
-							}
+							{ model: db.discipline, as: 'discipline', attributes: ['name'] },
+							{ model: db.teacher, as: 'teacher', attributes: ['name'] }
 						]
 					}
 				]
 			}
 		]
 	})
-		.then(data => res.send(data))
+		.then(data => {
+			// ЛОГИРОВАНИЕ: смотрим первую запись в терминале
+			if (data.length > 0) {
+				console.log("=== DEBUG ATTESTATION ===");
+				console.log("Teacher Discipline Object:", JSON.stringify(data[0].student_group_session?.teacher_discipline, null, 2));
+			} else {
+				console.log("Записей в аттестационной книжке пока нет");
+			}
+			res.send(data);
+		})
 		.catch(err => {
-			console.error("ПОДРОБНАЯ ОШИБКА В КОНСОЛИ:", err);
-			res.status(500).send({ message: err.message });
+			console.error("ОШИБКА SEQUELIZE:", err);
+			res.status(500).send(err.message);
 		});
 };
 
