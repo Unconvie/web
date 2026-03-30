@@ -142,16 +142,24 @@ const AttestationBook = () => {
 							.filter(s => {
 								const student = students.find(st => st.id == selectedStudent);
 								if (!student) return false;
-								// У студента group_id, а у сессии student_group_id
 								return String(s.student_group_id) === String(student.group_id);
 							})
-							.map(s => (
-								<option key={s.id} value={s.id}>
-									{s.teacher_discipline?.discipline?.name} ({s.report_type?.name})
-								</option>
-							))
+							.map(s => {
+								// Извлекаем данные для удобства
+								const disciplineName = s.teacher_discipline?.discipline?.name || "Без названия";
+								const reportName = s.report_type?.name || "—";
+								const teacherName = s.teacher_discipline?.teacher?.name || "Преподаватель не указан";
+
+								return (
+									<option key={s.id} value={s.id}>
+										{/* Формат: Дисциплина (Тип контроля) — (Преподаватель) */}
+										{disciplineName} ({reportName}) — ({teacherName})
+									</option>
+								);
+							})
 						}
 					</select>
+
 
 					{/* Поле для оценки */}
 					{/* Заменяем input на select для валидации */}
