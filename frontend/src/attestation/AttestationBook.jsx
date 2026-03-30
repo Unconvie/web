@@ -101,6 +101,27 @@ const AttestationBook = () => {
 	console.log("Данные студента:", students.find(st => st.id == selectedStudent));
 	console.log("Доступные сессии:", sessions);
 
+	// Подсветка оценок в таблице
+	const getMarkStyle = (mark) => {
+		const baseStyle = {
+			padding: "4px 8px",
+			borderRadius: "4px",
+			color: "white",
+			fontWeight: "bold",
+			display: "inline-block",
+			minWidth: "20px",
+			textAlign: "center"
+		};
+
+		switch (String(mark)) {
+			case "5": return { ...baseStyle, backgroundColor: "#28a745" }; // Зеленый
+			case "4": return { ...baseStyle, backgroundColor: "#007bff" }; // Синий
+			case "3": return { ...baseStyle, backgroundColor: "#ffc107", color: "#000" }; // Желтый/Оранжевый
+			case "2": return { ...baseStyle, backgroundColor: "#dc3545" }; // Красный
+			default: return { ...baseStyle, backgroundColor: "#6c757d" }; // Серый для прочих
+		}
+	};
+
 	return (
 		<div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
 			<h2>Аттестационная книжка</h2>
@@ -177,14 +198,16 @@ const AttestationBook = () => {
 
 					<button
 						onClick={handleAdd}
+						disabled={!selectedStudent || !selectedSession || !grade} // Блокировка
 						style={{
 							padding: "8px 20px",
-							backgroundColor: "#28a745",
+							backgroundColor: (!selectedStudent || !selectedSession || !grade) ? "#ccc" : "#28a745",
 							color: "white",
 							border: "none",
 							borderRadius: "4px",
-							cursor: "pointer",
-							fontWeight: "bold"
+							cursor: (!selectedStudent || !selectedSession || !grade) ? "not-allowed" : "pointer",
+							fontWeight: "bold",
+							transition: "background-color 0.3s"
 						}}
 					>
 						+ Добавить
@@ -281,7 +304,6 @@ const AttestationBook = () => {
 								{/* Ячейка с оценкой */}
 								<td style={{ padding: "12px" }}>
 									{editingId === r.id ? (
-										/* Комментарии внутри тернарного оператора лучше убрать или писать так */
 										<select
 											value={editMark}
 											onChange={(e) => setEditMark(e.target.value)}
@@ -293,7 +315,7 @@ const AttestationBook = () => {
 											<option value="2">2 (Неуд.)</option>
 										</select>
 									) : (
-										<strong>{r.mark || "—"}</strong>
+										<span style={getMarkStyle(r.mark)}>{r.mark || "—"}</span>
 									)}
 								</td>
 								<td style={{ padding: "12px", border: "1px solid #ddd" }}>
