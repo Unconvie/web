@@ -1,3 +1,4 @@
+// Отвечает за безопасность. Хранит логины и хэшированные пароли для входа в систему.
 module.exports = function (sequelize, DataTypes) {
 	const User = sequelize.define('user', {
 		id: {
@@ -10,7 +11,7 @@ module.exports = function (sequelize, DataTypes) {
 		username: {
 			type: DataTypes.STRING(50),
 			allowNull: false,
-			unique: true, // Хорошо бы добавить уникальность
+			unique: true,
 			comment: "Уникальное имя пользователя"
 		},
 		password: {
@@ -18,7 +19,7 @@ module.exports = function (sequelize, DataTypes) {
 			allowNull: false,
 			comment: "Хэш пароля"
 		}
-		// Поле trial708 удаляем отсюда
+		// Поле trial708 удаляем
 	});
 
 	return User;

@@ -1,3 +1,4 @@
+// справочник названий предметов
 module.exports = function (sequelize, DataTypes) {
 	return sequelize.define('discipline', {
 		id: {
@@ -12,7 +13,7 @@ module.exports = function (sequelize, DataTypes) {
 			allowNull: false,
 			comment: "TRIAL"
 		}
-		// УДАЛИЛИ ОТСЮДА trial708
+		// удалила trial708
 	}, {
 		tableName: 'discipline',
 		timestamps: false,

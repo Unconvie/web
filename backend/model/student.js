@@ -1,3 +1,4 @@
+//Содержит ФИО студентов и привязывает их к конкретной группе через group_id
 module.exports = function (sequelize, DataTypes) {
 	return sequelize.define('student', {
 		id: {
@@ -6,11 +7,11 @@ module.exports = function (sequelize, DataTypes) {
 			allowNull: false,
 			primaryKey: true
 		},
-		name: { // Должно быть строго name, как в phpMyAdmin
+		name: {
 			type: DataTypes.STRING(255),
 			allowNull: true
 		},
-		group_id: { // Должно быть строго group_id
+		group_id: {
 			type: DataTypes.INTEGER,
 			allowNull: true
 		}

@@ -1,3 +1,4 @@
+// Хранит список академических групп
 module.exports = function (sequelize, DataTypes) {
 	return sequelize.define('student_group', {
 		id: {
@@ -12,6 +13,6 @@ module.exports = function (sequelize, DataTypes) {
 		}
 	}, {
 		tableName: 'student_group',
-		timestamps: false // ОБЯЗАТЕЛЬНО, если в базе только id и name
+		timestamps: false
 	});
 };
