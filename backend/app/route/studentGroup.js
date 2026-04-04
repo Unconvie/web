@@ -1,3 +1,4 @@
+// управляет списком академических групп (например, для выпадающего списка при создании студента), Все методы требуют авторизации
 module.exports = (app) => {
 	const studentGroup = require('../../controller/studentGroup');
 	const authJwt = require('../middleware/authJwt');
