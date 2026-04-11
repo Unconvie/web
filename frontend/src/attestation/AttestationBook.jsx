@@ -1,18 +1,33 @@
-import React, { useState, useEffect } from "react";
+// место, где все данные пересекаются.
+// Здесь фиксируется результат обучения: какой студент, по какому предмету, у какого преподавателя и какую оценку получил.
+// отвечает за выставление оценок конкретным людям
+
+import { useState, useEffect } from "react";
 import http from "../http-common";
 
+// состояния, подготовка данных
 const AttestationBook = () => {
+	// Хранит все записи из таблицы аттестации.
 	const [records, setRecords] = useState([]);
+
+	// Списки для выпадающих меню
+	// (чтобы мы могли выбрать существующего студента и существующий предмет).
 	const [students, setStudents] = useState([]);
 	const [sessions, setSessions] = useState([]);
+
+	// Данные формы для добавления новой записи.
 	const [selectedStudent, setSelectedStudent] = useState("");
 	const [selectedSession, setSelectedSession] = useState("");
 	const [grade, setGrade] = useState("");
+
+	// Состояния для «режима редактирования» прямо в таблице.
 	const [editingId, setEditingId] = useState(null);
 	const [editMark, setEditMark] = useState("");
 	const [editSessionId, setEditSessionId] = useState(""); // для хранения ID сессии при редактировании
+	// Строка, по которой мы отсеиваем лишние записи в таблице
 	const [filterDiscipline, setFilterDiscipline] = useState(""); // хранение выбранного фильтра
 
+	// загрузка данных
 	useEffect(() => {
 		loadRecords();
 		// Убираем /api, так как сервер их не ждет по этому адресу
@@ -20,6 +35,7 @@ const AttestationBook = () => {
 		http.get("/ListSessions").then(res => setSessions(res.data));
 	}, []);
 
+	// // загрузка данных
 	const loadRecords = () => {
 		http.get("/ListAttestation")
 			.then(response => {
@@ -30,8 +46,11 @@ const AttestationBook = () => {
 			});
 	};
 
+	// добавление записи
 	const handleAdd = async () => {
 		try {
+			// async/await — более современный и «чистый» способ писать асинхронный код, чем .then()
+			// отправляем ID студента, ID сессии и саму оценку.
 			await http.post("/AddAttestation", {
 				student_id: selectedStudent,
 				student_group_session_id: selectedSession,
@@ -45,10 +64,13 @@ const AttestationBook = () => {
 			alert("Ошибка при добавлении");
 		}
 	};
+	// удаление записи
+	// Использует стандартный window.confirm
+	// Если нажать «ОК», отправляется запрос DELETE на сервер.
 	const handleDelete = async (id) => {
 		if (window.confirm("Вы уверены, что хотите удалить эту запись?")) {
 			try {
-				await http.delete(`/DeleteAttestation/${id}`); // Путь должен совпадать с роутом
+				await http.delete(`/DeleteAttestation/${id}`);
 				loadRecords(); // Обновляем таблицу
 			} catch (e) {
 				console.error("Ошибка при удалении:", e);
@@ -57,22 +79,25 @@ const AttestationBook = () => {
 		}
 	};
 
+	// Редактирование записи
 	const handleUpdate = async (id) => {
 		try {
 			if (!editSessionId) {
 				alert("Выберите дисциплину");
 				return;
 			}
-
+			// собирает новые данные (измененную оценку или предмет)
 			const dataToUpdate = {
 				mark: editMark,
 				student_group_session_id: parseInt(editSessionId) // Преобразуем в число явно
 			};
 
+			// и отправляет их методом PUT
 			console.log("Отправляем на сервер:", dataToUpdate);
-
 			await http.put(`/UpdateAttestation/${id}`, dataToUpdate);
 
+			// После успеха мы сбрасываем editingId в null
+			// и строка таблицы снова становится обычной, а не редактируемой.
 			setEditingId(null);
 			loadRecords();
 		} catch (e) {
@@ -82,7 +107,8 @@ const AttestationBook = () => {
 	};
 
 
-	// Получаем уникальный список названий дисциплин из загруженных записей
+	// Получаем уникальный(через new set) список всех дисциплин,
+	// которые уже есть в аттестации и создает массив для фильтрации
 	const uniqueDisciplines = [...new Set(records
 		.map(r => r.student_group_session?.teacher_discipline?.discipline?.name)
 		.filter(name => name) // Убираем пустые значения
@@ -92,6 +118,8 @@ const AttestationBook = () => {
 	const filteredRecords = (filterDiscipline
 		? records.filter(r => r.student_group_session?.teacher_discipline?.discipline?.name === filterDiscipline)
 		: records)
+		// берем имена студентов, переводим в нижний регистр, сравниваем через localeCompare
+		// Так список всегда будет по алфавиту
 		.sort((a, b) => {
 			const nameA = a.student?.name?.toLowerCase() || "";
 			const nameB = b.student?.name?.toLowerCase() || "";
@@ -102,6 +130,8 @@ const AttestationBook = () => {
 	console.log("Доступные сессии:", sessions);
 
 	// Подсветка оценок в таблице
+	// анализирует оценку и возвращает объект со стилями:
+	// 5 - зеленый, 4 - синий, 3 - оранжевый, 2 - красный
 	const getMarkStyle = (mark) => {
 		const baseStyle = {
 			padding: "4px 8px",
@@ -116,7 +146,7 @@ const AttestationBook = () => {
 		switch (String(mark)) {
 			case "5": return { ...baseStyle, backgroundColor: "#28a745" }; // Зеленый
 			case "4": return { ...baseStyle, backgroundColor: "#007bff" }; // Синий
-			case "3": return { ...baseStyle, backgroundColor: "#ffc107", color: "#000" }; // Желтый/Оранжевый
+			case "3": return { ...baseStyle, backgroundColor: "#ffc107", color: "#000" }; // Оранжевый
 			case "2": return { ...baseStyle, backgroundColor: "#dc3545" }; // Красный
 			default: return { ...baseStyle, backgroundColor: "#6c757d" }; // Серый для прочих
 		}
@@ -138,6 +168,8 @@ const AttestationBook = () => {
 				<div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
 
 					{/* Выбор студента */}
+					{/* выпадающий список. Мы берем массив students, который загрузили ранее,
+					и превращаем каждого студента в строку списка. value — это ID студента. */}
 					<select
 						value={selectedStudent}
 						onChange={(e) => setSelectedStudent(e.target.value)}
@@ -154,12 +186,15 @@ const AttestationBook = () => {
 						value={selectedSession}
 						onChange={(e) => setSelectedSession(e.target.value)}
 						style={{ padding: "8px", flex: 2, borderRadius: "4px", border: "1px solid #ccc" }}
+						// Пока не выберешь студента, список предметов заблокирован. исключает хаос.
 						disabled={!selectedStudent}
 					>
 						<option value="">
 							{selectedStudent ? "Выберите предмет..." : "Сначала выберите студента"}
 						</option>
 						{sessions
+							// ищем в базе текущую группу выбранного студента и показываем в списке только те учебные сессии,
+							// которые относятся к его группе. Студент из группы «А» не увидит предметов группы «Б».
 							.filter(s => {
 								const student = students.find(st => st.id == selectedStudent);
 								if (!student) return false;
@@ -196,6 +231,8 @@ const AttestationBook = () => {
 						<option value="2">2 (Неуд.)</option>
 					</select>
 
+					{/* Кнопка станет активной (и поменяет цвет с серого на зеленый) только тогда,
+						когда заполнены все три поля, чтобы не отправить в базу пустую запись. */}
 					<button
 						onClick={handleAdd}
 						disabled={!selectedStudent || !selectedSession || !grade} // Блокировка
@@ -222,6 +259,8 @@ const AttestationBook = () => {
 					style={{ padding: "5px", borderRadius: "4px" }}
 				>
 					<option value="">Все предметы</option>
+					{/* Позволяет быстро отсеять оценки по конкретному предмету
+					Если выбрана дисциплина, кнопка «Сбросить» появляется автоматически. */}
 					{uniqueDisciplines.map(name => (
 						<option key={name} value={name}>{name}</option>
 					))}
@@ -237,6 +276,7 @@ const AttestationBook = () => {
 			</div>
 
 			{/* Таблица с результатами */}
+			{/* реализовано переключение между режимом просмотра и режимом редактирования. */}
 			<table style={{ width: "100%", borderCollapse: "collapse", boxShadow: "0 2px 5px rgba(0,0,0,0.1)" }}>
 				<thead>
 					<tr style={{ backgroundColor: "#333", color: "white", textAlign: "left" }}>
@@ -248,31 +288,53 @@ const AttestationBook = () => {
 					</tr>
 				</thead>
 				<tbody>
+					{/* Проверка: если в массиве есть хоть одна запись, рисуем таблицу
+					Если нет — сработает условие в конце (которое выводит «Записей нет»). */}
 					{filteredRecords.length > 0 ? (
-						filteredRecords.map((r, index) => (
+						// Цикл, который проходит по каждой записи (r) в отфильтрованном списке и создает для неё строку таблицы <tr>
+						filteredRecords.map((r) => (
+							// Обязательный для React атрибут
+							// Позволяет движку понимать, какую именно строку нужно обновить при изменениях
+							// не перерисовывая всю таблицу целиком.
 							<tr key={r.id}>
+								{/* Если мы НЕ редактируем (Просмотр): */}
+								{/* Использование ? страхует от ошибки «Cannot read property 'name' of null»
+								если вдруг запись в базе есть, а связи со студентом нет. */}
 								<td style={{ padding: "12px" }}>{r.student?.name}</td>
 								<td style={{ padding: "12px", border: "1px solid #ddd" }}>
+									{/* Условие переключения между режимами, Для каждой строки проверяется */}
+									{/* срабатывает, когда нажимаешь кнопку «Карандаш» и editingId становится равен ID этой строки. */}
 									{editingId === r.id ? (
 										<select
+											// ищем в общем списке сессий ту, чей ID сейчас редактируется (editSessionId)
+											// и вытаскиваем из неё название дисциплины, чтобы селект сразу показывал текущий предмет.
 											value={sessions.find(s => s.id == editSessionId)?.teacher_discipline?.discipline?.name || ""}
+											// Когда ты выбираешь другой предмет в списке:
 											onChange={(e) => {
+												// запоминаем выбранное название
 												const selectedDiscName = e.target.value;
+												// находим ID группы текущего студента
 												const studentGroupId = r.student_group_session?.student_group_id;
-
+												// Ищем в списке sessions ту запись, где название совпадает и группа совпадает.
 												const newSession = sessions.find(s =>
 													s.teacher_discipline?.discipline?.name === selectedDiscName &&
 													String(s.student_group_id) === String(studentGroupId)
 												);
-
+												// Обновляем editSessionId новым ID
+												// гарантирует, что не привяжешь студенту предмет от чужой группы.
 												if (newSession) {
 													setEditSessionId(newSession.id);
 												}
 											}}
 										>
+											{/* Генерация списка дисциплин для выбора */}
 											<option value="">Выберите дисциплину...</option>
+											{/* «Чистка» дубликатов
+											Если один предмет ведут два преподавателя, в списке названий он появится один раз */}
 											{[...new Set(sessions
+												// Оставляем только те предметы, которые проводятся у группы этого студента.
 												.filter(s => String(s.student_group_id) === String(r.student_group_session?.student_group_id))
+												// Вытаскиваем только названия.
 												.map(s => s.teacher_discipline?.discipline?.name)
 											)].map(name => {
 												const sess = sessions.find(s =>
@@ -288,11 +350,12 @@ const AttestationBook = () => {
 											})}
 										</select>
 									) : (
-										/* --- ВОТ ТУТ МЫ ПОПРАВИЛИ ВЫВОД --- */
+										// Жирным шрифтом выводит название дисциплины.
 										<div>
 											<div style={{ fontWeight: "500" }}>
 												{r.student_group_session?.teacher_discipline?.discipline?.name || "—"}
 											</div>
+											{/* мелким серым шрифтом имя преподавателя. */}
 											<div style={{ fontSize: "12px", color: "#888", marginTop: "2px" }}>
 												{/* Обращаемся к teacher напрямую, как в логах терминала */}
 												{r.student_group_session?.teacher_discipline?.teacher?.name || "Преподаватель не указан"}
@@ -315,6 +378,7 @@ const AttestationBook = () => {
 											<option value="2">2 (Неуд.)</option>
 										</select>
 									) : (
+										// вызывается функция, которая красит «5» в зеленый, а «2» в красный.
 										<span style={getMarkStyle(r.mark)}>{r.mark || "—"}</span>
 									)}
 								</td>
@@ -357,10 +421,13 @@ const AttestationBook = () => {
 										</>
 									) : (
 										<>
+											{/* Редактирование */}
 											<button
 												onClick={() => {
 													setEditingId(r.id);
+													// Вместо оценки — выпадающий список с цифрами 2, 3, 4, 5.
 													setEditMark(r.mark);
+													// Вместо названия дисциплины — <select>, где можно выбрать другой предмет (только для этой же группы).
 													setEditSessionId(r.student_group_session_id); // чтобы селект сразу открылся на нужном предмете
 												}}
 												style={{ marginRight: "10px", cursor: "pointer", border: "none", background: "none" }}
@@ -371,6 +438,8 @@ const AttestationBook = () => {
 												🗑️
 											</button>
 										</>
+										// Если строка редактируется, мы видим кнопки «Сохранить» и «Отмена».
+										// Если нет — кнопки «Изменить» и «Удалить»
 									)}
 								</td>
 							</tr>

@@ -1,6 +1,14 @@
-import React, { useState, useEffect } from 'react';
+// архитектор учебного процесса. Он создает саму структуру: кто, что и у какой группы ведет.
+
+// Связывание (Teacher + Discipline):
+// Сначала мы говорим системе: «Этот преподаватель в принципе умеет и будет вести этот предмет».
+// Назначение (TeacherDiscipline + Group):
+// Затем мы берем эту готовую пару и «сажаем» её на конкретную группу, добавляя тип контроля (экзамен/зачет).
+
+import { useState, useEffect } from 'react';
 import http from '../http-common';
 
+// инициализация состояний
 const Assignments = () => {
 	const [teachers, setTeachers] = useState([]);
 	const [disciplines, setDisciplines] = useState([]);
@@ -21,13 +29,17 @@ const Assignments = () => {
 		loadData();
 	}, []);
 
+	// загрузка данных
 	const loadData = async () => {
 		try {
+			// Promise.all - Вместо того чтобы ждать по очереди каждый ответ от сервера,
+			// мы отправляем все запросы одновременно.
+			// Это экономит время загрузки страницы.
 			const [t, d, g, rt, td, s] = await Promise.all([
 				http.get("/listTeachers"),
 				http.get("/listDisciplines"),
 				http.get("/listStudentGroups"),
-				http.get("/listReportTypes"), // Убедись, что этот роут есть
+				http.get("/listReportTypes"),
 				http.get("/ListTeacherDisciplines"),
 				http.get("/ListSessions")
 			]);
@@ -42,6 +54,9 @@ const Assignments = () => {
 		}
 	};
 
+	// Создание связи «Преподаватель — Предмет»
+
+	// отправляем на бэкенд ID учителя и ID предмета. В базе создается запись в промежуточной таблице.
 	const handleCreateTD = async () => {
 		if (!selTeacher || !selDiscipline) return alert("Выберите все поля");
 		try {
@@ -57,6 +72,10 @@ const Assignments = () => {
 		}
 	};
 
+	// Создание учебной сессии (Назначение группе)
+
+	// берем уже существующую связку «Препод-Предмет» (selTD),
+	// выбираем группу и указываем, будет ли это экзамен или зачет
 	const handleCreateSession = async () => {
 		if (!selTD || !selGroup || !selReportType) return alert("Выберите все поля");
 
@@ -82,7 +101,10 @@ const Assignments = () => {
 		}
 	};
 
-	// 2. Создай функцию для показа сообщения
+	// функция для показа сообщения
+	// Обратная связь
+	// дать пользователю понять, что действие выполнено
+	// Сообщение появляется и исчезает через 3 секунды
 	const showStatus = (text) => {
 		setMessage(text);
 		setTimeout(() => setMessage(""), 3000); // Скроем через 3 секунды
@@ -92,7 +114,8 @@ const Assignments = () => {
 		<div style={{ padding: "30px", maxWidth: "1000px", margin: "0 auto" }}>
 			<h2>Управление учебным планом</h2>
 
-			{/* ШАГ 1: Связка Преподаватель + Дисциплина */}
+			{/* Связка Преподаватель + Дисциплина */}
+			{/* распределяем нагрузку между учителями. */}
 			<div style={{ background: "#f4f4f4", padding: "15px", borderRadius: "8px", marginBottom: "20px" }}>
 				<h4>1. Связать преподавателя с предметом</h4>
 				<select value={selTeacher} onChange={e => setSelTeacher(e.target.value)}>
@@ -106,28 +129,36 @@ const Assignments = () => {
 				<button onClick={handleCreateTD}>Связать</button>
 			</div>
 
-			{/* ШАГ 2: Назначение группе */}
+			{/* Назначение группе */}
+			{/* этот шаг зависит от предыдущего. В списке выбора мы видим уже скомбинированные пары. */}
 			<div style={{ background: "#eef6ff", padding: "15px", borderRadius: "8px", marginBottom: "20px" }}>
 				<h4>2. Назначить предмет группе</h4>
 				<select value={selTD} onChange={e => setSelTD(e.target.value)}>
 					<option value="">Выберите пару Препод-Предмет</option>
+					{/* Выбор связки «Преподаватель — Предмет» */}
 					{teacherDisciplines.map(td => (
 						<option key={td.id} value={td.id}>
 							{td.teacher?.name} — {td.discipline?.name}
 						</option>
 					))}
 				</select>
+				{/* Выбор учебной группы */}
 				<select value={selGroup} onChange={e => setSelGroup(e.target.value)} style={{ margin: "0 10px" }}>
 					<option value="">Выберите группу</option>
 					{groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
 				</select>
+				{/* Выбор типа контроля */}
 				<select value={selReportType} onChange={e => setSelReportType(e.target.value)}>
 					<option value="">Тип контроля</option>
 					{reportTypes.map(rt => <option key={rt.id} value={rt.id}>{rt.name}</option>)}
 				</select>
+				{/* Кнопка исполнения */}
+				{/* Вызывает функцию handleCreateSession
+				которая соберет все три выбранных ID и отправит их на бэкенд для создания записи в таблице sessions */}
 				<button onClick={handleCreateSession} style={{ marginLeft: "10px" }}>Назначить</button>
 			</div>
 
+			{/* система уведомлений */}
 			{message && (
 				<div style={{
 					padding: "10px",
@@ -151,6 +182,7 @@ const Assignments = () => {
 					</tr>
 				</thead>
 				<tbody>
+					{/* список: какая группа, что учит и кому сдает. */}
 					{sessions.map(s => (
 						<tr key={s.id}>
 							<td>{s.student_group?.name}</td>

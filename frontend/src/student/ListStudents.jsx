@@ -1,21 +1,29 @@
-import React, { useState, useEffect } from "react";
+// В этом документе реализована интерактивная среда с фильтрацией, сортировкой и «живым» редактированием прямо в строке таблицы.
+// управляет данными студентов и их принадлежностью к группам. Главная особенность здесь — связанность данных:
+// студент не существует в вакууме, он всегда привязан к group_id.
+// Файл обеспечивает целостность этой связи при создании и обновлении записей.
+
+import { useState, useEffect } from "react";
 import http from "../http-common";
 
 const ListStudents = () => {
-	const [students, setStudents] = useState([]);
-	const [groups, setGroups] = useState([]); // Состояние для списка групп
+	const [students, setStudents] = useState([]); // Весь список из БД
+	const [groups, setGroups] = useState([]); // Список групп для выпадающих меню
 	const [fio, setFio] = useState("");
 	const [selectedGroup, setSelectedGroup] = useState(""); // Выбранная группа
-	const [error, setError] = useState(null); // <-- ДОБАВИТЬ ЭТО
+	const [error, setError] = useState(null);
 	const [editingStudent, setEditingStudent] = useState(null); // ID студента, которого редактируем
 	const [editName, setEditName] = useState("");
 	const [editGroupId, setEditGroupId] = useState("");
-	const [selectedGroupFilter, setSelectedGroupFilter] = useState("");
+	const [selectedGroupFilter, setSelectedGroupFilter] = useState(""); // Состояние фильтра
 
 	useEffect(() => {
 		loadData();
 	}, []);
 
+	// Режим правки
+	// При нажатии на «карандаш» не просто открываем форму, копируем данные студента в буфер
+	// Если пользователь передумает и нажмет «отмена» (cancelEdit), оригинальные данные в таблице не пострадают
 	const startEdit = (student) => { //включеня режима правки
 		setEditingStudent(student.id);
 		setEditName(student.name);
@@ -26,6 +34,9 @@ const ListStudents = () => {
 		setEditingStudent(null);
 	};
 
+	// Сохранение изменений
+	// Отправляет обновленные данные на сервер
+	// После успеха зануляем editingStudent, и строка превращается из формы ввода в обычный текст
 	const handleUpdate = async (id) => { // сохранение на бекенд
 		try {
 			await http.post(`/UpdateStudent/${id}`, {
@@ -40,9 +51,14 @@ const ListStudents = () => {
 		}
 	};
 
+	// Загрузка данных
+	// загружаем два массива одновременно.
+	// Группы нужны, чтобы в таблице вместо group_id: 5 показать «ИБ-31»
 	const loadData = async () => {
 		try {
-			setError(null); // Сбрасываем старую ошибку
+			// Сбрасываем старую ошибку
+			setError(null);
+			// Асинхронный запрос
 			const resStudents = await http.get("/listStudents");
 			setStudents(resStudents.data);
 
@@ -50,36 +66,52 @@ const ListStudents = () => {
 			setGroups(resGroups.data);
 		} catch (err) {
 			console.log(err);
-			setError("Не удалось загрузить данные"); // <-- УСТАНАВЛИВАЕМ ТЕКСТ
+			setError("Не удалось загрузить данные");
 		}
 	};
+
+	// Фильтрация и Сортировка
 	const filteredAndSortedStudents = students
 		.filter(s => {
 			// Если фильтр не выбран, показываем всех. 
+			// Если выбрана — оставляем только тех, чей group_id совпал.
 			// Приводим к строке, так как id из селекта может быть строкой, а в объекте числом.
 			return !selectedGroupFilter ? true : String(s.group_id) === String(selectedGroupFilter);
 		})
+		// localeCompare — лучший способ сортировать ФИО на русском языке
+		// он учитывает алфавитный порядок и специфические символы.
 		.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
+	// превращает данные из полей ввода в запись бд.
 	const handleAdd = async (e) => {
+		// Отмена перезагрузки
 		e.preventDefault();
 		try {
+			// Отправка данных на сервер
 			await http.post("/addStudent", {
 				name: fio,
 				group_id: selectedGroup
 			});
+			// Очистка переменных
 			setFio("");
 			setSelectedGroup("");
+
+			// Синхронизация интерфейса
 			loadData();
 		} catch (e) {
+			// Обработка провала
 			alert("Ошибка при добавлении");
 		}
 	};
 
 	const handleDelete = (id) => {
+		// Проверка решимости
 		if (window.confirm("Вы точно хотите удалить этого студента?")) {
+			// Запрос на удаление через post
 			http.post(`/deleteStudent/${id}`)
+				// Обновление при успехе
 				.then(() => loadData())
+				// Логирование ошибок
 				.catch(e => console.error("Ошибка удаления:", e));
 		}
 	};
@@ -90,8 +122,12 @@ const ListStudents = () => {
 				Управление студентами
 			</h2>
 
+			{/* Условный рендеринг.
+			Если в состоянии error есть текст, React покажет его красным цветом.
+			Если ошибки нет (null), этот блок вообще не попадет в DOM. */}
 			{error && <p style={{ color: "red" }}>{error}</p>}
 
+			{/* добавление студента */}
 			<div style={{ backgroundColor: "#f9f9f9", padding: "20px", borderRadius: "8px", marginBottom: "30px", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>
 				<h4 style={{ marginTop: 0 }}>Добавить нового студента</h4>
 				<form onSubmit={handleAdd} style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
@@ -118,6 +154,7 @@ const ListStudents = () => {
 				</form>
 			</div>
 
+			{/* фильтрация */}
 			<div style={{ marginBottom: "15px", display: "flex", alignItems: "center", gap: "10px" }}>
 				<label style={{ fontWeight: "bold" }}>Показать группу:</label>
 				<select
@@ -131,7 +168,7 @@ const ListStudents = () => {
 					))}
 				</select>
 
-				{/* Кнопка сброса: появляется только если selectedGroupFilter не пустой */}
+				{/* Кнопка сброса фильтрации: появляется только если selectedGroupFilter не пустой т.е. когда фильтр активен */}
 				{selectedGroupFilter && (
 					<button
 						onClick={() => setSelectedGroupFilter("")}
@@ -149,6 +186,7 @@ const ListStudents = () => {
 				)}
 			</div>
 
+			{/* таблица данных */}
 			<table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
 				<thead>
 					<tr style={{ backgroundColor: "#333", color: "white", textAlign: "left" }}>
@@ -160,11 +198,16 @@ const ListStudents = () => {
 				</thead>
 				<tbody style={{ verticalAlign: "middle" }}>
 					{students.length > 0 ? (
+						// переключение между режимами редактирования и чтения
 						filteredAndSortedStudents.map((s, index) => (
 							<tr key={s.id} style={{ borderBottom: "1px solid #ddd", backgroundColor: index % 2 === 0 ? "#fff" : "#fcfcfc" }}>
+								{/* ID */}
 								<td style={{ padding: "12px", color: "#666" }}>{s.id}</td>
 
 								{/* ФИО студента */}
+								{/* Если editingStudent совпадает с ID текущего студента, ячейка превращается в поле ввода.
+								В противном случае — это просто текст.
+								Это позволяет редактировать данные, не переходя на другие страницы. */}
 								<td style={{ padding: "12px" }}>
 									{editingStudent === s.id ? (
 										<input
@@ -178,6 +221,8 @@ const ListStudents = () => {
 								</td>
 
 								{/* Группа */}
+								{/* используем тернарный оператор, чтобы вытащить имя группы из связанного объекта.
+								Если связи нет, пишем «Не назначена» */}
 								<td style={{ padding: "12px" }}>
 									{editingStudent === s.id ? (
 										<select
@@ -192,7 +237,7 @@ const ListStudents = () => {
 									)}
 								</td>
 
-								{/* ДЕЙСТВИЯ (сделали как у преподавателей) */}
+								{/* ДЕЙСТВИЯ (как у преподавателей) */}
 								<td style={{ padding: "12px", textAlign: "center" }}>
 									<div style={{ display: "flex", gap: "5px", justifyContent: "center" }}>
 										{editingStudent === s.id ? (

@@ -1,17 +1,29 @@
-import React, { useState, useEffect } from 'react';
+// «склад ресурсов»
+// Здесь  пополняем список доступных предметов, которые потом будем связывать с преподавателями и группами
+
+// Отвечает за управление атомарной сущностью — Дисциплиной
+// Здесь реализована важная проверка на дубликаты и базовая валидация ввода
+// чтобы база данных не превратилась в свалку из одинаковых названий.
+
+// Импорты
+import { useState, useEffect } from 'react';
 import http from "../http-common";
 
+// инициализация состояний
 const ListDisciplines = () => {
-	const [disciplines, setDisciplines] = useState([]);
-	const [name, setName] = useState(""); // Для ввода новой дисциплины
-	const [error, setError] = useState("");
+	const [disciplines, setDisciplines] = useState([]); // Весь список предметов из БД
+	const [name, setName] = useState(""); // Текст, который ты сейчас вводишь в инпут Для ввода новой дисциплины
+	const [error, setError] = useState(""); // Хранение текста ошибки, если загрузка упадет
 
-	// 1. Загрузка списка при открытии страницы
+	// Загрузка списка при открытии страницы
 	useEffect(() => {
 		loadDisciplines();
 	}, []);
 
-	// 2. Функция получения данных (вынесли отдельно, чтобы вызывать часто)
+	// Функция получения данных
+
+	// вынесено в функцию Чтобы вызывать повторно после каждого добавления или удаления
+	// поддерживая таблицу в актуальном состоянии без перезагрузки всей страницы.
 	const loadDisciplines = () => {
 		http.get("/listDisciplines")
 			.then(response => {
@@ -24,13 +36,16 @@ const ListDisciplines = () => {
 			});
 	};
 
-	// 3. Функция добавления
+	// Обработка добавления
 	const handleAdd = (e) => {
-		e.preventDefault(); // Чтобы страница не перезагружалась при нажатии кнопки
+		// Чтобы страница не перезагружалась при нажатии кнопки
+		e.preventDefault();
 		if (!name) return;
-		if (!name.trim()) return; // Проверка на пустые пробелы
+		// обрезает пробелы по краям. Мы не позволяем сохранить предмет, состоящий только из пробелов.
+		if (!name.trim()) return;
 
 		// Проверяем, нет ли уже такой дисциплины в списке
+		//переводим всё в нижний регистр (toLowerCase) перед сравнением
 		const exists = disciplines.find(d => d.name.toLowerCase() === name.toLowerCase());
 		if (exists) {
 			alert("Такая дисциплина уже есть в списке!");
@@ -48,13 +63,15 @@ const ListDisciplines = () => {
 			});
 	};
 
-	// 4. Функция удаления
+	// Функция удаления
 	const handleDelete = (id) => {
+		// защита от случайного клика.
 		if (window.confirm("Вы точно хотите удалить эту дисциплину?")) {
-			// В твоих роутах прописан POST для удаления
+			// В роутах удаление реализовано через POST запрос
 			http.post(`/deleteDiscipline/${id}`)
 				.then(() => {
-					loadDisciplines(); // Сразу обновляем таблицу
+					// после успеха Сразу обновляем таблицу
+					loadDisciplines();
 				})
 				.catch(e => {
 					console.error("Ошибка удаления:", e);
@@ -72,6 +89,7 @@ const ListDisciplines = () => {
 			{/* Секция добавления */}
 			<div style={{ backgroundColor: "#f9f9f9", padding: "20px", borderRadius: "8px", marginBottom: "30px", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>
 				<h4 style={{ marginTop: 0 }}>Добавить новую дисциплину</h4>
+				{/* Секция ввода */}
 				<form onSubmit={handleAdd} style={{ display: "flex", gap: "10px" }}>
 					<input
 						type="text"
@@ -94,7 +112,7 @@ const ListDisciplines = () => {
 				</form>
 			</div>
 
-			{/* Таблица */}
+			{/* Таблица вывода */}
 			<div style={{ overflowX: "auto" }}>
 				<table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
 					<thead>
@@ -107,6 +125,7 @@ const ListDisciplines = () => {
 					<tbody>
 						{disciplines.length > 0 ? (
 							disciplines.map((d, index) => (
+								// смена фона через строку
 								<tr key={d.id} style={{ borderBottom: "1px solid #ddd", backgroundColor: index % 2 === 0 ? "#fff" : "#fcfcfc" }}>
 									<td style={{ padding: "12px", color: "#666" }}>{d.id}</td>
 									<td style={{ padding: "12px", fontWeight: "500" }}>{d.name}</td>
@@ -130,6 +149,7 @@ const ListDisciplines = () => {
 							))
 						) : (
 							<tr>
+								{/* Если в базе ноль записей, мы не оставляем белый экран, а выводим вежливое «Список дисциплин пуст». */}
 								<td colSpan="3" style={{ padding: "20px", textAlign: "center", color: "#999" }}>
 									Список дисциплин пуст. Добавьте первую запись выше.
 								</td>
